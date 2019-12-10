@@ -774,31 +774,6 @@ class ElectoralDistrictOcdIdTest(absltest.TestCase):
 
     self.ocdid_validator.check(element.find("ElectoralDistrictId"))
 
-  def testItRaisesAnErrorIfTheOcdidLabelIsNotAllLowerCase(self):
-    parent_string = """
-      <Contest objectId="con123">
-        <ElectoralDistrictId>ru0002</ElectoralDistrictId>
-      </Contest>
-    """
-    element = etree.fromstring(parent_string)
-
-    gp_unit = """
-      <GpUnit objectId="ru0002">
-        <ExternalIdentifiers>
-          <ExternalIdentifier>
-            <Type>oCd-id</Type>
-            <Value>ocd-division/country:us/state:va</Value>
-          </ExternalIdentifier>
-        </ExternalIdentifiers>
-      </GpUnit>
-    """
-    self.ocdid_validator.gpunits = [etree.fromstring(gp_unit)]
-    self.ocdid_validator.ocds = set(["ocd-division/country:us/state:va"])
-
-    with self.assertRaises(base.ElectionError) as ee:
-      self.ocdid_validator.check(element.find("ElectoralDistrictId"))
-    self.assertIn("Should be ocd-id and not oCd-id", str(ee.exception))
-
   def testItRaisesAnErrorIfTheReferencedGpUnitDoesNotExist(self):
     parent_string = """
       <Contest objectId="con123">
@@ -2752,11 +2727,13 @@ class ValidStableIDTest(absltest.TestCase):
   def setUp(self):
     super(ValidStableIDTest, self).setUp()
     self.root_string = """
+      <ExternalIdentifiers>
         <ExternalIdentifier>
           <Type>{}</Type>
           {}
           <Value>{}</Value>
         </ExternalIdentifier>
+      </ExternalIdentifiers>
     """
     self.stable_string = "<OtherType>stable</OtherType>"
     self.stable_id_validator = rules.ValidStableID(None, None)
@@ -3366,56 +3343,45 @@ class ValidateOcdidLowerCaseTest(absltest.TestCase):
   def setUp(self):
     super(ValidateOcdidLowerCaseTest, self).setUp()
     self.ocdid_validator = rules.ValidateOcdidLowerCase(None, None)
+    self.ext_ids_str = """
+    <ExternalIdentifiers>
+      <ExternalIdentifier>
+       {}
+       {}
+      </ExternalIdentifier>
+    </ExternalIdentifiers>
+    """
 
-  def testItChecksExternalIdentifierElements(self):
-    self.assertEqual(["ExternalIdentifier"], self.ocdid_validator.elements())
+  def testItChecksExternalIdentifiersElements(self):
+    self.assertEqual(["ExternalIdentifiers"], self.ocdid_validator.elements())
 
   def testItMakesSureOcdidsAreAllLowerCase(self):
-    valid_id_string = """
-      <ExternalIdentifier>
-        <Type>ocd-id</Type>
-        <Value>ocd-division/country:us/state:va</Value>
-      </ExternalIdentifier>
-    """
+    valid_id_string = self.ext_ids_str.format(
+        "<Type>ocd-id</Type>",
+        "<Value>ocd-division/country:us/state:va</Value>")
     self.ocdid_validator.check(etree.fromstring(valid_id_string))
 
   def testRaisesWarningIfOcdidHasUpperCaseLetter(self):
-    uppercase_string = """
-      <ExternalIdentifier>
-        <Type>ocd-id</Type>
-        <Value>ocd-division/country:us/state:VA</Value>
-      </ExternalIdentifier>
-    """
+    uppercase_string = self.ext_ids_str.format(
+        "<Type>ocd-id</Type>",
+        "<Value>ocd-division/country:us/state:VA</Value>")
     with self.assertRaises(base.ElectionWarning) as ew:
       self.ocdid_validator.check(etree.fromstring(uppercase_string))
     self.assertIn("Valid OCD-IDs should be all lowercase", str(ew.exception))
 
   def testIgnoresElementsWithoutValidOcdidXml(self):
-    no_type_string = """
-      <ExternalIdentifier/>
-    """
+    no_type_string = self.ext_ids_str.format("", "")
     self.ocdid_validator.check(etree.fromstring(no_type_string))
 
-    non_ocdid_string = """
-      <ExternalIdentifier>
-        <Type>not-ocdid</Type>
-      </ExternalIdentifier>
-    """
+    non_ocdid_string = self.ext_ids_str.format("<Type>not-ocdid</Type>", "")
     self.ocdid_validator.check(etree.fromstring(non_ocdid_string))
 
-    ocdid_missing_value_string = """
-      <ExternalIdentifier>
-        <Type>ocd-id</Type>
-      </ExternalIdentifier>
-    """
+    ocdid_missing_value_string = self.ext_ids_str.format(
+        "<Type>ocd-id</Type>", "")
     self.ocdid_validator.check(etree.fromstring(ocdid_missing_value_string))
 
-    empty_value_string = """
-      <ExternalIdentifier>
-        <Type>ocd-id</Type>
-        <Value></Value>
-      </ExternalIdentifier>
-    """
+    empty_value_string = self.ext_ids_str.format("<Type>ocd-id</Type>",
+                                                 "<Value></Value>")
     self.ocdid_validator.check(etree.fromstring(empty_value_string))
 
 
