@@ -1945,6 +1945,46 @@ class ElectionEndDates(base.DateRule):
       raise base.ElectionError("The election dates are invalid: ", error_log)
 
 
+class GpUnitsHaveInternationalizedName(base.BaseRule):
+  """Each office must have a jurisdiction-id."""
+
+  def elements(self):
+    return ["GpUnit"]
+
+  def check(self, element):
+    intl_names = element.findall("InternationalizedName")
+    missing_names = []
+    if intl_names is None or not intl_names:
+      raise base.ElectionError(
+          ("GpUnit {} is required to have "
+           "at least one InterationalizedName element.".format(
+               element.get("object_id", ""))))
+    name_with_text_not_present = True
+    for i_name in intl_names:
+      if i_name is None:
+        continue
+      name_text = i_name.find("Text")
+      if name_text is None or not (name_text.text and name_text.text.strip()):
+        missing_names.append(
+            "InternationalizedName on line {} does not have text.".format(
+                i_name.sourceline))
+        continue
+      name_with_text_not_present = False
+    if missing_names:
+      warnings = "\n".join(missing_names)
+    else:
+      warnings = ""
+    # If there's more than one Internationalized Name, but some are missing
+    # text, raise a warning with the line number.
+    if name_with_text_not_present:
+      raise base.ElectionError(
+          ("GpUnit {} is required to have at "
+           "least one valid Internationalized Name. {}".format(
+               element.get("object_id", ""), warnings)))
+    elif warnings:
+      raise base.ElectionWarning(warnings)
+
+
 class RuleSet(enum.Enum):
   """Names for sets of rules used to validate a particular feed type."""
   ELECTION = 1
@@ -1980,6 +2020,7 @@ COMMON_RULES = (
     ValidJurisdictionID,
     OfficesHaveJurisdictionID,
     ValidStableID,
+    GpUnitsHaveInternationalizedName,
 )
 
 ELECTION_RULES = COMMON_RULES + (

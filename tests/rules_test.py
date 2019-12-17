@@ -4605,6 +4605,112 @@ class ElectionEndDatesTest(absltest.TestCase):
       self.date_validator.check(election)
 
 
+class GpUnitsHaveInternationalizedNameTest(absltest.TestCase):
+
+  def setUp(self):
+    super(GpUnitsHaveInternationalizedNameTest, self).setUp()
+    self.gpunits_intl_name_validator = rules.GpUnitsHaveInternationalizedName(
+        None, None)
+
+  def testHasAtLeastOneInternationalizedNameWithText(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+      <InternationalizedName>
+        <Text language="en">Wisconsin District 7</Text>
+      </InternationalizedName>
+    </GpUnit>
+    """
+    self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+
+  def testNoInternationalizedNameElements(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+    </GpUnit>
+    """
+    with self.assertRaises(base.ElectionError) as cm:
+      self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+    self.assertIn("required to have at least one InterationalizedName element.",
+                  str(cm.exception))
+
+  def testNoInternationalizedNames(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+      <InternationalizedName>
+        <Text language="en"></Text>
+      </InternationalizedName>
+    </GpUnit>
+    """
+    with self.assertRaises(base.ElectionError) as cm:
+      self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+    self.assertIn(
+        "is required to have at least one valid Internationalized Name.",
+        str(cm.exception))
+
+  def testInternationalizedNameTextValueIsWhitespace(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+      <InternationalizedName>
+        <Text language="en">                 </Text>
+      </InternationalizedName>
+    </GpUnit>
+    """
+    with self.assertRaises(base.ElectionError) as cm:
+      self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+    self.assertIn(
+        "is required to have at least one valid Internationalized Name.",
+        str(cm.exception))
+
+  def testInternationalizedNameElementDoesNotHaveText(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+      <InternationalizedName/>
+      <InternationalizedName>
+        <Text language="en">Russia</Text>
+      </InternationalizedName>
+    </GpUnit>
+    """
+    with self.assertRaises(base.ElectionWarning) as cm:
+      self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+    self.assertIn("does not have text", str(cm.exception))
+
+  def testInternationalizedNameTextDoesNotHaveValue(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+      <InternationalizedName>
+        <Text language="en"></Text>
+      </InternationalizedName>
+      <InternationalizedName>
+        <Text language="en">USA</Text>
+      </InternationalizedName>
+    </GpUnit>
+    """
+    with self.assertRaises(base.ElectionWarning) as cm:
+      self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+    self.assertIn("does not have text", str(cm.exception))
+
+  def testAtLeastOneInternationalizedNameButTextValueIsWhitespace(self):
+    root_string = """
+    <GpUnit objectId="ru0002">
+      <ComposingGpUnitIds>ru_temp_id</ComposingGpUnitIds>
+      <InternationalizedName>
+        <Text language="en">               </Text>
+      </InternationalizedName>
+      <InternationalizedName>
+        <Text language="en">USA</Text>
+      </InternationalizedName>
+    </GpUnit>
+    """
+    with self.assertRaises(base.ElectionWarning) as cm:
+      self.gpunits_intl_name_validator.check(etree.fromstring(root_string))
+    self.assertIn("does not have text", str(cm.exception))
+
+
 class RulesTest(absltest.TestCase):
 
   def testAllRulesIncluded(self):
