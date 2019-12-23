@@ -1775,10 +1775,12 @@ class ValidURIAnnotation(base.BaseRule):
   Throws Warnings and Errors depending on type of invalidity.
   """
 
-  TYPE_PLATFORMS = set(
-      ["facebook", "twitter", "instagram", "youtube", "website", "line"])
-  USAGE_TYPES = set(["personal", "official", "campaign"])
-  PLATFORM_ONLY_ANNOTATIONS = set(["wikipedia", "ballotpedia"])
+  TYPE_PLATFORMS = {
+      "facebook", "twitter", "instagram", "youtube", "website", "line",
+      "linkedin"
+  }
+  USAGE_TYPES = {"personal", "official", "campaign"}
+  PLATFORM_ONLY_ANNOTATIONS = {"wikipedia", "ballotpedia"}
 
   def elements(self):
     return ["ContactInformation"]
